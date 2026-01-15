@@ -23,12 +23,57 @@ def bakeries():
     bakeries = [bakery.to_dict() for bakery in Bakery.query.all()]
     return make_response(  bakeries,   200  )
 
-@app.route('/bakeries/<int:id>')
+@app.route('/bakeries/<int:id>', methods=['GET', 'PATCH'])
 def bakery_by_id(id):
 
     bakery = Bakery.query.filter_by(id=id).first()
+
+    if request.method == 'PATCH':
+        form_data = request.form
+        if form_data.get('name'):
+            bakery.name = form_data.get('name')
+        db.session.add(bakery)
+        db.session.commit()
+        return make_response(bakery.to_dict(), 200)
+
     bakery_serialized = bakery.to_dict()
-    return make_response ( bakery_serialized, 200  )
+    return make_response(bakery_serialized, 200)
+
+
+@app.route('/baked_goods', methods=['POST'])
+def create_baked_good():
+    form_data = request.form
+    name = form_data.get('name')
+    price = form_data.get('price')
+    bakery_id = form_data.get('bakery_id')
+
+    # Convert price to numeric if present
+    try:
+        if price is not None:
+            # allow float or int
+            price_val = float(price)
+        else:
+            price_val = None
+    except ValueError:
+        price_val = None
+
+    bg = BakedGood(name=name, price=price_val, bakery_id=bakery_id)
+    db.session.add(bg)
+    db.session.commit()
+
+    return make_response(bg.to_dict(), 201)
+
+
+@app.route('/baked_goods/<int:id>', methods=['DELETE'])
+def delete_baked_good(id):
+    bg = BakedGood.query.filter_by(id=id).first()
+    if not bg:
+        return make_response({'message': 'Baked good not found'}, 404)
+
+    db.session.delete(bg)
+    db.session.commit()
+
+    return make_response({'message': 'Baked good deleted'}, 200)
 
 @app.route('/baked_goods/by_price')
 def baked_goods_by_price():
